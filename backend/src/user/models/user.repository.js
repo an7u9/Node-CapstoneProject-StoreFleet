@@ -12,10 +12,12 @@ export const findUserRepo = async (factor, withPassword = false) => {
 };
 
 export const findUserForPasswordResetRepo = async (hashtoken) => {
-  return await UserModel.findOne({
+  const user =  await UserModel.findOne({
     resetPasswordToken: hashtoken,
-    resetPasswordExpire: { $gt: Date.now() },
+    resetPasswordExpire: { $gt: Date.now() }
   });
+  
+  return user;
 };
 
 export const updateUserProfileRepo = async (_id, data) => {
@@ -36,4 +38,11 @@ export const deleteUserRepo = async (_id) => {
 
 export const updateUserRoleAndProfileRepo = async (_id, data) => {
   // Write your code here for updating the roles of other users by admin
+  const objectId = new mongoose.Types.ObjectId(_id);
+  const updatedUser = await UserModel.findOneAndUpdate({ _id:objectId}, data, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  });
+  return updatedUser;
 };

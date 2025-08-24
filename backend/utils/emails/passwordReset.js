@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 
-export const sendPasswordResetEmail = async (user, resetPasswordURL) => {
+export const sendPasswordResetEmail = async (user, resetToken) => {
+    // console.log("in email");
+    
   const transporter = nodemailer.createTransport({
     service: process.env.SMPT_SERVICE,
     auth: {
@@ -8,7 +10,8 @@ export const sendPasswordResetEmail = async (user, resetPasswordURL) => {
       pass: process.env.STORFLEET_SMPT_MAIL_PASSWORD,
     },
   });
-
+//   console.log("transporter");
+  
   const mailOptions = {
     from: process.env.STORFLEET_MAIL,
     to: user.email,
@@ -69,8 +72,7 @@ export const sendPasswordResetEmail = async (user, resetPasswordURL) => {
                 </div>
                 <div class="content">
                     <p>Hello, ${user.name}</p>
-                    <p>You have requested to reset your password for your Storefleet account. To reset your password, please click the button below:</p>
-                    <p><a class="button" href="${resetPasswordURL}">Reset Password</a></p>
+                    <p>Enter this token to complete the reset : <strong>${resetToken}</strong></p>
                     <p>If you did not request a password reset, please ignore this email.</p>
                 </div>
             </div>
@@ -78,6 +80,7 @@ export const sendPasswordResetEmail = async (user, resetPasswordURL) => {
         </html>
     `,
   };
-
+//   console.log("mailoptions");
   await transporter.sendMail(mailOptions);
+//   console.log("mailsent");
 };

@@ -30,7 +30,59 @@ export const addNewProduct = async (req, res, next) => {
 };
 
 export const getAllProducts = async (req, res, next) => {
-  // Implement the functionality for search, filter and pagination this function.
+  try {
+    const { search, category, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+
+    // Build the query object based on the filters
+    if (!search && !category && !minPrice && !maxPrice) {
+      const products = await getAllProductsRepo();
+      return res.status(200).json({
+        success: true,
+        totalProducts: products.length,
+        totalPages: 1,
+        currentPage: 1,
+        products,
+      });
+    }
+    const query = {};
+    
+    if (search) {
+      query.name = { $regex: search, $options: 'i' }; // Case-insensitive search
+    }
+    
+    if (category) {
+      query.category = category; // Filter by category
+    }
+    
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) {
+        query.price.$gte = Number(minPrice); // Minimum price
+      }
+      if (maxPrice) {
+        query.price.$lte = Number(maxPrice); // Maximum price
+      }
+    }
+
+    // Calculate total products matching the query
+    const totalProducts = await ProductModel.countDocuments(query);
+
+    // Calculate pagination
+    const products = await ProductModel.find(query)
+      .limit(Number(limit))
+      .skip((page - 1) * limit)
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      totalProducts,
+      totalPages: Math.ceil(totalProducts / limit),
+      currentPage: Number(page),
+      products,
+    });
+  } catch (error) {
+    return next(new ErrorHandler(500, error));
+  }
 };
 
 export const updateProduct = async (req, res, next) => {
@@ -128,6 +180,9 @@ export const getAllReviewsOfAProduct = async (req, res, next) => {
 
 export const deleteReview = async (req, res, next) => {
   // Insert the essential code into this controller wherever necessary to resolve issues related to removing reviews and updating product ratings.
+  const user = req.user;
+  console.log(user);
+  
   try {
     const { productId, reviewId } = req.query;
     if (!productId || !reviewId) {
@@ -138,29 +193,36 @@ export const deleteReview = async (req, res, next) => {
         )
       );
     }
+    
     const product = await findProductRepo(productId);
+    
     if (!product) {
       return next(new ErrorHandler(400, "Product not found!"));
     }
     const reviews = product.reviews;
-
+   x
     const isReviewExistIndex = reviews.findIndex((rev) => {
       return rev._id.toString() === reviewId.toString();
     });
     if (isReviewExistIndex < 0) {
       return next(new ErrorHandler(400, "review doesn't exist"));
     }
+    if(user._id === reviews.user){
+      const reviewToBeDeleted = reviews[isReviewExistIndex];
+      reviews.splice(isReviewExistIndex, 1);
 
-    const reviewToBeDeleted = reviews[isReviewExistIndex];
-    reviews.splice(isReviewExistIndex, 1);
-
-    await product.save({ validateBeforeSave: false });
-    res.status(200).json({
-      success: true,
-      msg: "review deleted successfully",
-      deletedReview: reviewToBeDeleted,
-      product,
-    });
+      await product.save({ validateBeforeSave: false });
+      res.status(200).json({
+        success: true,
+        msg: "review deleted successfully",
+        deletedReview: reviewToBeDeleted,
+        product,
+      });
+    }else{
+      
+      return next(new ErrorHandler(500, "you are not authorized to delete this review"));
+    }
+    
   } catch (error) {
     return next(new ErrorHandler(500, error));
   }
